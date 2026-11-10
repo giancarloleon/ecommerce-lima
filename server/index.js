@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import { PrismaPg } from '@prisma/adapter-pg';
 // 👇 AQUÍ ESTÁ EL CAMBIO: Apuntamos a la carpeta generada
 import { PrismaClient } from './generated/prisma/index.js'; 
+import productRoutes from './routes/productRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 
 dotenv.config();
 
@@ -11,6 +13,8 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+// ... app.use('/api/products', productRoutes);
+app.use('/api/auth', authRoutes);
 
 const connectionString = process.env.DATABASE_URL;
 const adapter = new PrismaPg({ connectionString });
@@ -30,6 +34,8 @@ app.get('/api/test-db', async (req, res) => {
     res.status(500).json({ error: 'Error conectando a la base de datos' });
   }
 });
+
+app.use('/api/products', productRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
