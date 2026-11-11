@@ -76,3 +76,33 @@ export const getProductById = async (req, res) => {
     res.status(500).json({ error: 'Error al buscar el producto' });
   }
 };
+// Crear múltiples productos a la vez
+export const createMultipleProducts = async (req, res) => {
+  try {
+    const { products } = req.body; // Recibimos un array de productos
+
+    if (!products || products.length === 0) {
+      return res.status(400).json({ error: 'No se enviaron productos' });
+    }
+
+    // Formateamos los datos para Prisma
+    const formattedProducts = products.map(p => ({
+      name: p.name,
+      description: p.description,
+      price: parseFloat(p.price),
+      stock: parseInt(p.stock),
+      category: p.category,
+      imageUrl: p.imageUrl || null, // Si por ahora solo usan URL de imagen
+    }));
+
+    // createMany inserta todo de golpe en PostgreSQL
+    const result = await prisma.product.createMany({
+      data: formattedProducts,
+    });
+
+    res.status(201).json({ message: 'Productos creados exitosamente', count: result.count });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al crear los productos' });
+  }
+};

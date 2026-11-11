@@ -1,5 +1,5 @@
 import express from 'express';
-import { createProduct, getProducts, getProductById } from '../controllers/productController.js';
+import { createProduct, getProducts, getProductById, createMultipleProducts } from '../controllers/productController.js';
 import { protect, admin } from '../middlewares/authMiddleware.js';
 import multer from 'multer';
 
@@ -17,5 +17,7 @@ router.route('/')
 // Obtener uno por ID (Público)
 router.route('/:id')
   .get(getProductById);
+
+  router.post('/bulk', protect, admin, createMultipleProducts); 
 
 export default router;
