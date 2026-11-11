@@ -4,7 +4,8 @@ import {
   getProducts, 
   getProductById, 
   createMultipleProducts, 
-  updateProduct 
+  updateProduct,
+  deleteProduct
 } from '../controllers/productController.js';
 import { protect, admin } from '../middlewares/authMiddleware.js';
 import multer from 'multer';
@@ -24,8 +25,9 @@ router.route('/')
   .post(protect, admin, upload.single('image'), createProduct); 
 
 // 3. RUTAS POR ID (Obtener y Actualizar)
-router.route('/:id')
+  router.route('/:id')
   .get(getProductById)
-  .put(protect, admin, upload.single('image'), updateProduct); // 👈 Agregamos la ruta PUT
+  .put(protect, admin, upload.single('image'), updateProduct)
+  .delete(protect, admin, deleteProduct);
 
 export default router;

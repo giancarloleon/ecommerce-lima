@@ -175,3 +175,15 @@ export const updateProduct = async (req, res) => {
     res.status(500).json({ error: 'Error al actualizar el producto' });
   }
 };
+export const deleteProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.product.delete({
+      where: { id }
+    });
+    res.json({ message: 'Producto eliminado correctamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al eliminar el producto' });
+  }
+};

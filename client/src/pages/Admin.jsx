@@ -119,6 +119,18 @@ export default function Admin() {
     }
   };
 
+    const handleDeleteProduct = async (id) => {
+    if (window.confirm('¿Estás seguro de eliminar este producto? Esta acción no se puede deshacer.')) {
+      try {
+        await api.delete(`/products/${id}`);
+        toast.success('Producto eliminado');
+        fetchData(); // Recargamos la tabla
+      } catch (error) {
+        toast.error('Error al eliminar el producto');
+      }
+    }
+  };
+
   return (
     <div className="container mx-auto p-4 mt-10 max-w-6xl">
       <div className="flex justify-between items-center mb-8">
@@ -143,47 +155,81 @@ export default function Admin() {
       </div>
 
       {/* 1. TABLA DE PRODUCTOS */}
-      {activeTab === 'products' && (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
-          {loading ? (
-            <p className="p-6 text-center text-gray-500">Cargando productos...</p>
-          ) : products.length === 0 ? (
-            <p className="p-6 text-center text-gray-500">No hay productos en la tienda.</p>
-          ) : (
-                        <table className="w-full text-left">
-              <thead className="bg-gray-50 border-b text-gray-600 text-sm">
-                <tr>
-                  <th className="p-4 font-semibold">Producto</th>
-                  <th className="p-4 font-semibold">Categoría</th>
-                  <th className="p-4 font-semibold">Precio</th>
-                  <th className="p-4 font-semibold">Stock</th>
-                  <th className="p-4 font-semibold">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map(p => (
-                  <tr key={p.id} className="border-b hover:bg-gray-50 transition">
-                    <td className="p-4 font-medium">{p.name}</td>
-                    <td className="p-4 text-gray-600">{p.category}</td>
-                    <td className="p-4">S/ {p.price}</td>
-                    <td className="p-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${p.stock > 5 ? 'bg-green-100 text-green-700' : p.stock > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                        {p.stock} unidades
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <button 
-                        onClick={() => handleEditClick(p)}
-                        className="bg-blue-100 text-blue-600 px-3 py-1 rounded hover:bg-blue-200 font-medium text-sm"
-                      >
-                        Editar
-                      </button>
-                    </td>
-                  </tr>
+            {activeTab === 'products' && (
+        <div className="space-y-6"> {/* Envolvemos todo en un div con espacio */}
+          
+          {/* 🚨 ALERTA DE STOCK BAJO */}
+          {products.some(p => p.stock < 3) && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-2xl">⚠️</span>
+                <h3 className="text-red-700 font-bold text-lg">Alerta: Stock por agotarse</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {products.filter(p => p.stock < 3).map(p => (
+                  <div key={p.id} className="bg-white p-3 rounded shadow-sm border border-red-100 flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-sm text-gray-800">{p.name}</p>
+                      <p className="text-xs text-red-600 font-bold">Quedan {p.stock} unidades</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleEditClick(p)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">Editar</button>
+                      <button onClick={() => handleDeleteProduct(p.id)} className="text-red-600 hover:text-red-800 text-sm font-medium">Borrar</button>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
           )}
+
+          {/* TABLA PRINCIPAL */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
+            {loading ? (
+              <p className="p-6 text-center text-gray-500">Cargando productos...</p>
+            ) : products.length === 0 ? (
+              <p className="p-6 text-center text-gray-500">No hay productos en la tienda.</p>
+            ) : (
+              <table className="w-full text-left">
+                <thead className="bg-gray-50 border-b text-gray-600 text-sm">
+                  <tr>
+                    <th className="p-4 font-semibold">Producto</th>
+                    <th className="p-4 font-semibold">Categoría</th>
+                    <th className="p-4 font-semibold">Precio</th>
+                    <th className="p-4 font-semibold">Stock</th>
+                    <th className="p-4 font-semibold text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map(p => (
+                    <tr key={p.id} className="border-b hover:bg-gray-50 transition">
+                      <td className="p-4 font-medium">{p.name}</td>
+                      <td className="p-4 text-gray-600">{p.category}</td>
+                      <td className="p-4">S/ {p.price}</td>
+                      <td className="p-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${p.stock > 5 ? 'bg-green-100 text-green-700' : p.stock > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                          {p.stock} unds
+                        </span>
+                      </td>
+                      <td className="p-4 text-center flex justify-center gap-2">
+                        <button 
+                          onClick={() => handleEditClick(p)}
+                          className="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 font-medium text-sm transition"
+                        >
+                          Editar
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteProduct(p.id)}
+                          className="bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 font-medium text-sm transition"
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       )}
 
