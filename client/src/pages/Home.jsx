@@ -2,21 +2,20 @@ import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
-import { useNavigate } from 'react-router-dom';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-
 
 export default function Home() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Todas');
 
   const addToCart = useCartStore((state) => state.addToCart);
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
 
-  // Efecto para cargar los productos al entrar a la página
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -36,72 +35,121 @@ export default function Home() {
     navigate('/login');
   };
 
-    const handleAddToCart = (product) => {
+  const handleAddToCart = (product) => {
     addToCart(product);
-    // 👇 Lanza la notificación
     toast.success(`${product.name} se agregó al carrito`, {
       icon: '🛒',
-      style: {
-        borderRadius: '10px',
-        background: '#333',
-        color: '#fff',
-      },
+      style: { borderRadius: '10px', background: '#333', color: '#fff' },
     });
   };
 
-  if (loading) return <div className="text-center mt-10">Cargando productos...</div>;
+ // 1. Extraemos las categorías únicas
+  const categories = ['Todas', ...new Set(products.map((p) => p.category))];
+
+  // 2. Filtramos por buscador Y por categoría
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = 
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = 
+      selectedCategory === 'Todas' || product.category === selectedCategory;
+
+    return matchesSearch && matchesCategory;
+  });
+
+  if (loading) return <div className="text-center mt-10 text-gray-500">Cargando productos...</div>;
 
   return (
     <div className="container mx-auto p-4">
-      {/* Navbar simple */}
-      <header className="flex justify-between items-center bg-white p-4 shadow-sm mb-6">
+      {/* HEADER RESPONSIVE */}
+      <header className="flex flex-col md:flex-row justify-between items-center bg-white p-4 shadow-sm mb-6 rounded-lg gap-4">
         <h1 className="text-2xl font-bold text-blue-600">Mi E-commerce</h1>
-        <div className="flex items-center gap-4">
-          
-          {/* 👇 NUEVO: Botón solo para Admins */}
+        
+        {/* BARRA DE BÚSQUEDA */}
+        <div className="w-full md:w-1/3">
+          <input
+            type="text"
+            placeholder="Buscar productos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        {/* BOTONES DE NAVEGACIÓN */}
+        <div className="flex items-center gap-3 flex-wrap justify-center">
           {user?.role === 'ADMIN' && (
-            <Link to="/admin" className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 transition">
+            <Link to="/admin" className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 transition text-sm">
               Panel Admin
             </Link>
           )}
-
-          <Link to="/cart" className="bg-blue-100 text-blue-700 px-4 py-2 rounded hover:bg-blue-200 transition">
+          <Link to="/my-orders" className="text-gray-600 hover:text-blue-600 font-medium text-sm">
+            Mis Pedidos
+          </Link>
+          <Link to="/cart" className="bg-blue-100 text-blue-700 px-4 py-2 rounded hover:bg-blue-200 transition text-sm">
             Carrito
           </Link>
-          <span className="text-gray-600">Hola, {user?.name}</span>
-          <button onClick={handleLogout} className="text-red-500 hover:underline">
+          <button onClick={handleLogout} className="text-red-500 hover:underline text-sm">
             Cerrar Sesión
           </button>
         </div>
       </header>
+      {/* 👇 NUEVA BARRA DE CATEGORÍAS */}
+      <div className="flex overflow-x-auto gap-2 mb-6 pb-2 hide-scrollbar">
+        {categories.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
+            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition ${
+              selectedCategory === cat
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
 
-      {/* Grid de Productos */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {products.map((product) => (
-          <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="h-48 bg-gray-200 flex items-center justify-center">
-              {/* Si no hay imagen, mostramos un placeholder */}
+      {/* GRID DE PRODUCTOS (RESPONSIVE) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+        {filteredProducts.map((product) => (
+          <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
+            {/* Imagen */}
+            <div className="h-32 sm:h-48 bg-gray-100 flex items-center justify-center">
               {product.imageUrl ? (
                 <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-gray-400">Sin imagen</span>
+                <span className="text-gray-400 text-sm">Sin imagen</span>
               )}
             </div>
-            <div className="p-4">
-              <h3 className="font-bold text-lg">{product.name}</h3>
-              <p className="text-gray-500 text-sm mb-2">{product.category}</p>
-              <p className="text-xl font-bold text-gray-800">S/ {product.price}</p>
+            
+            {/* Contenido */}
+            <div className="p-3 sm:p-4 flex flex-col flex-grow">
+              <h3 className="font-bold text-sm sm:text-lg line-clamp-2">{product.name}</h3>
+              <p className="text-gray-500 text-xs sm:text-sm mb-2">{product.category}</p>
               
-              <button
-                onClick={() => handleAddToCart(product)}
-                className="mt-4 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-              >
-                    Agregar al carrito
-              </button>
+              <div className="mt-auto">
+                <p className="text-lg sm:text-xl font-bold text-gray-800 mb-2">S/ {product.price}</p>
+                <button
+                  onClick={() => handleAddToCart(product)}
+                  className="w-full bg-blue-600 text-white py-1.5 sm:py-2 rounded hover:bg-blue-700 transition text-xs sm:text-base"
+                >
+                  Agregar
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Mensaje si no hay resultados */}
+      {filteredProducts.length === 0 && !loading && (
+        <div className="text-center text-gray-500 mt-10">
+          <p className="text-lg">No se encontraron productos para "{searchTerm}"</p>
+        </div>
+      )}
     </div>
   );
 }

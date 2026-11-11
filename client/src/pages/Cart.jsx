@@ -2,71 +2,90 @@ import { useState } from 'react';
 import api from '../api/axios';
 import { useCartStore } from '../store/cartStore';
 import { useNavigate, Link } from 'react-router-dom';
-import { loadCheckoutScript, openCheckout } from '@jibaru/culqi/checkout';
-
 
 export default function Cart() {
   const cartItems = useCartStore((state) => state.cartItems);
   const getTotalPrice = useCartStore((state) => state.getTotalPrice);
   const clearCart = useCartStore((state) => state.clearCart);
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-    const increaseQuantity = useCartStore((state) => state.increaseQuantity);
+  const increaseQuantity = useCartStore((state) => state.increaseQuantity);
   const decreaseQuantity = useCartStore((state) => state.decreaseQuantity);
 
-  const handleCheckout = async () => {
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleCheckout = () => {
     if (cartItems.length === 0) return;
     setLoading(true);
 
-    try {
-      // 2. Nos aseguramos de que el script de Culqi esté cargado
-      await loadCheckoutScript();
-
-      // 3. Abrimos el checkout con las opciones
-      openCheckout({
-        publicKey: 'pk_test_ZBEgoMsIJcN2Lp0l', // Tu llave pública directa
-        title: 'Mi E-commerce',
-        amount: Math.round(getTotalPrice() * 100), // En céntimos
-        currency: 'PEN',
-        mode: 'modal',
-        // 4. Callback cuando el usuario ingresa la tarjeta correctamente
-        onToken: async (token) => {
-          try {
-            // Enviamos el token a tu backend (que ya tiene la lógica de cobro)
-            await api.post('/orders', { 
-              items: cartItems, 
-              culqiToken: token.id 
-            });
-            
-            clearCart();
-            alert('¡Pago exitoso! Tu orden está en camino.');
-            navigate('/my-orders');
-          } catch (error) {
-            alert(error.response?.data?.error || 'Error al procesar el pago.');
-          } finally {
-            setLoading(false);
-          }
-        },
-        // 5. Callback si hay un error (ej. tarjeta rechazada)
-        onError: (error) => {
-          console.error('Error de Culqi:', error);
-          alert(error.user_message || 'Error en la pasarela de pagos.');
-          setLoading(false);
-        },
-      });
-    } catch (error) {
-      console.error('Error al cargar Culqi:', error);
-      alert('No se pudo cargar la pasarela de pagos.');
+    if (typeof window.CulqiCheckout === 'undefined') {
+      alert('El sistema de pagos no está listo. Recarga la página.');
       setLoading(false);
+      return;
     }
+
+    const publicKey = import.meta.env.VITE_CULQI_PUBLIC_KEY;
+
+    if (!publicKey) {
+      alert("Error: Falta la llave pública de Culqi en el archivo .env");
+      setLoading(false);
+      return;
+    }
+
+    const config = {
+      settings: {
+        publicKey: publicKey,
+        title: 'Mi E-commerce',
+        currency: 'PEN',
+        amount: Math.round(getTotalPrice() * 100),
+      },
+      client: {
+        checkout: {
+          paymentMethods: { tarjeta: true },
+        },
+      },
+    };
+
+    try {
+      const checkout = new window.CulqiCheckout(config);
+      checkout.open();
+    } catch (error) {
+      console.error("Error al abrir Culqi:", error);
+      alert("Hubo un error al abrir la pasarela de pagos. Revisa la consola.");
+      setLoading(false);
+      return;
+    }
+
+    window.addEventListener('culqi', async (e) => {
+      const token = e.detail.id;
+      
+      if (token) {
+        try {
+          await api.post('/orders', { items: cartItems, culqiToken: token });
+          clearCart();
+          alert('¡Pago exitoso! Tu orden está en camino.');
+          navigate('/my-orders');
+        } catch (error) {
+          console.error(error);
+          alert(error.response?.data?.error || 'Error al procesar el pago en el servidor.');
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    });
   };
 
   return (
     <div className="container mx-auto p-4 max-w-2xl mt-10">
-      <h2 className="text-2xl font-bold mb-6">Tu Carrito</h2>
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+        <h2 className="text-2xl font-bold">Tu Carrito</h2>
+        <Link to="/" className="text-blue-600 hover:underline font-medium">
+          ← Seguir comprando
+        </Link>
+      </div>
 
       {cartItems.length === 0 ? (
-        <div className="text-center text-gray-500">
+        <div className="text-center text-gray-500 bg-white p-8 rounded-lg shadow">
           <p>Tu carrito está vacío.</p>
           <Link to="/" className="text-blue-600 hover:underline mt-4 block">
             Volver al catálogo
@@ -74,12 +93,12 @@ export default function Cart() {
         </div>
       ) : (
         <>
-                    <div className="space-y-4">
+          <div className="space-y-4">
             {cartItems.map((item) => (
-              <div key={item.id} className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 shadow rounded gap-4">
+              <div key={item.id} className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 shadow rounded-lg gap-4">
                 
                 {/* Nombre y Precio */}
-                <div className="flex-1">
+                <div className="flex-1 w-full text-center sm:text-left">
                   <h3 className="font-bold text-lg">{item.name}</h3>
                   <p className="text-gray-500 text-sm">Precio unitario: S/ {item.price}</p>
                 </div>
@@ -102,7 +121,7 @@ export default function Cart() {
                 </div>
 
                 {/* Subtotal */}
-                <div className="text-right sm:min-w-[100px]">
+                <div className="text-right sm:min-w-[100px] w-full sm:w-auto">
                   <p className="font-bold text-lg">S/ {(item.price * item.quantity).toFixed(2)}</p>
                 </div>
                 
@@ -110,16 +129,16 @@ export default function Cart() {
             ))}
           </div>
 
-                    <div className="mt-6 bg-white p-4 shadow rounded">
-            <div className="flex justify-between items-center text-xl font-bold">
-              <span>Total:</span>
+          <div className="mt-6 bg-white p-6 shadow rounded-lg">
+            <div className="flex justify-between items-center text-xl font-bold mb-6">
+              <span>Total a pagar:</span>
               <span>S/ {getTotalPrice().toFixed(2)}</span>
             </div>
             
             <button 
               onClick={handleCheckout} 
               disabled={loading}
-              className="mt-6 w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-bold disabled:opacity-50 transition text-lg"
+              className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-bold disabled:opacity-50 transition text-lg"
             >
               {loading ? 'Procesando pago...' : 'Pagar con Tarjeta'}
             </button>
@@ -127,13 +146,6 @@ export default function Cart() {
             <p className="text-center text-xs text-gray-500 mt-4">
               Pago 100% seguro procesado por Culqi.
             </p>
-
-            {/* 👇 AQUÍ VA EL NUEVO ENLACE */}
-            <div className="text-center mt-4 border-t pt-4">
-              <Link to="/" className="inline-block text-gray-600 hover:text-blue-600 font-medium transition">
-  ← Seguir comprando
-</Link>
-            </div>
           </div>
         </>
       )}
