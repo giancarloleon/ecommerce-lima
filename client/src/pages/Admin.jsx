@@ -18,6 +18,8 @@ export default function Admin() {
   // Estados para el formulario masivo
   const [tempProducts, setTempProducts] = useState([]); 
 
+  const [editingProduct, setEditingProduct] = useState(null);
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -91,6 +93,32 @@ export default function Admin() {
     }
   };
 
+  const handleEditClick = (product) => {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      stock: product.stock,
+      category: product.category
+    });
+    setActiveTab('create'); // Lo enviamos a la pestaña de creación/edición
+  };
+
+  const handleUpdateProduct = async (e) => {
+    e.preventDefault();
+    try {
+      await api.put(`/products/${editingProduct.id}`, formData);
+      toast.success('Producto actualizado');
+      setEditingProduct(null);
+      setFormData({ name: '', description: '', price: '', stock: '', category: '' });
+      fetchData();
+      setActiveTab('products');
+    } catch (error) {
+      toast.error('Error al actualizar');
+    }
+  };
+
   return (
     <div className="container mx-auto p-4 mt-10 max-w-6xl">
       <div className="flex justify-between items-center mb-8">
@@ -122,13 +150,14 @@ export default function Admin() {
           ) : products.length === 0 ? (
             <p className="p-6 text-center text-gray-500">No hay productos en la tienda.</p>
           ) : (
-            <table className="w-full text-left">
+                        <table className="w-full text-left">
               <thead className="bg-gray-50 border-b text-gray-600 text-sm">
                 <tr>
                   <th className="p-4 font-semibold">Producto</th>
                   <th className="p-4 font-semibold">Categoría</th>
                   <th className="p-4 font-semibold">Precio</th>
                   <th className="p-4 font-semibold">Stock</th>
+                  <th className="p-4 font-semibold">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -137,10 +166,14 @@ export default function Admin() {
                     <td className="p-4 font-medium">{p.name}</td>
                     <td className="p-4 text-gray-600">{p.category}</td>
                     <td className="p-4">S/ {p.price}</td>
+                    <td className="p-4">...</td>
                     <td className="p-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${p.stock > 5 ? 'bg-green-100 text-green-700' : p.stock > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                        {p.stock} unds
-                      </span>
+                      <button 
+                        onClick={() => handleEditClick(p)}
+                        className="bg-blue-100 text-blue-600 px-3 py-1 rounded hover:bg-blue-200 font-medium text-sm"
+                      >
+                        Editar
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -181,9 +214,11 @@ export default function Admin() {
       )}
 
       {/* 3. CREACIÓN INDIVIDUAL */}
-      {activeTab === 'create' && (
-        <form onSubmit={handleSubmitIndividual} className="bg-white p-8 rounded-lg shadow-md space-y-5 max-w-2xl mx-auto border border-gray-100">
-          <h3 className="font-bold text-xl text-gray-800 mb-4 border-b pb-2">Añadir Nuevo Producto</h3>
+        {activeTab === 'create' && (
+        <form onSubmit={editingProduct ? handleUpdateProduct : handleSubmitIndividual} className="...">
+          <h3 className="...">
+            {editingProduct ? 'Editar Producto' : 'Añadir Nuevo Producto'}
+          </h3>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
@@ -216,9 +251,20 @@ export default function Admin() {
             <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} className="w-full border p-2.5 rounded-md" />
           </div>
 
-          <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 font-bold">
-            Guardar Producto
-          </button>
+          <div className="flex gap-4">
+            <button type="submit" className="flex-1 bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 font-bold">
+              {editingProduct ? 'Guardar Cambios' : 'Guardar Producto'}
+            </button>
+            {editingProduct && (
+              <button 
+                type="button" 
+                onClick={() => { setEditingProduct(null); setFormData({ name: '', description: '', price: '', stock: '', category: '' }); setActiveTab('products'); }}
+                className="flex-1 bg-gray-300 text-gray-800 py-3 rounded-md hover:bg-gray-400 font-bold"
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
         </form>
       )}
 

@@ -1,23 +1,31 @@
 import express from 'express';
-import { createProduct, getProducts, getProductById, createMultipleProducts } from '../controllers/productController.js';
+import { 
+  createProduct, 
+  getProducts, 
+  getProductById, 
+  createMultipleProducts, 
+  updateProduct 
+} from '../controllers/productController.js';
 import { protect, admin } from '../middlewares/authMiddleware.js';
 import multer from 'multer';
 
-
 const router = express.Router();
+
+// Configuración de Multer para subir imágenes a memoria
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Obtener todos (Público) y Crear (Solo Admin)
+// 1. RUTAS MASIVAS (Deben ir antes de /:id)
+router.post('/bulk', protect, admin, createMultipleProducts);
+
+// 2. RUTA RAÍZ (Obtener todos y Crear uno)
 router.route('/')
   .get(getProducts)
-  //Añadimos upload.single('image')
   .post(protect, admin, upload.single('image'), createProduct); 
 
-// Obtener uno por ID (Público)
+// 3. RUTAS POR ID (Obtener y Actualizar)
 router.route('/:id')
-  .get(getProductById);
-
-  router.post('/bulk', protect, admin, createMultipleProducts); 
+  .get(getProductById)
+  .put(protect, admin, upload.single('image'), updateProduct); // 👈 Agregamos la ruta PUT
 
 export default router;

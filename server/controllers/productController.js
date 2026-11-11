@@ -80,30 +80,63 @@ export const getProductById = async (req, res) => {
 // Crear múltiples productos a la vez
 export const createMultipleProducts = async (req, res) => {
   try {
-    const { products } = req.body; // Recibimos un array de productos
+    const { products } = req.body;
 
     if (!products || products.length === 0) {
       return res.status(400).json({ error: 'No se enviaron productos' });
     }
 
-    // Formateamos los datos para Prisma
-    const formattedProducts = products.map(p => ({
-      name: p.name,
-      description: p.description,
-      price: parseFloat(p.price),
-      stock: parseInt(p.stock),
-      category: p.category,
-      imageUrl: p.imageUrl || null, // Si por ahora solo usan URL de imagen
-    }));
+    for (const p of products) {
+      // 1. Buscamos si el producto ya existe (mismo nombre y categoría)
+      const existingProduct = await prisma.product.findFirst({
+        where: { name: p.name, category: p.category }
+      });
 
-    // createMany inserta todo de golpe en PostgreSQL
-    const result = await prisma.product.createMany({
-      data: formattedProducts,
-    });
+      if (existingProduct) {
+        // 2. Si existe, ACTUALIZAMOS sumando el stock
+        await prisma.product.update({
+          where: { id: existingProduct.id },
+          data: { stock: existingProduct.stock + parseInt(p.stock) }
+        });
+      } else {
+        // 3. Si no existe, lo CREAMOS
+        await prisma.product.create({
+          data: {
+            name: p.name,
+            description: p.description,
+            price: parseFloat(p.price),
+            stock: parseInt(p.stock),
+            category: p.category,
+          }
+        });
+      }
+    }
 
-    res.status(201).json({ message: 'Productos creados exitosamente', count: result.count });
+    res.status(201).json({ message: 'Productos procesados correctamente' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al crear los productos' });
+    res.status(500).json({ error: 'Error al procesar los productos' });
+  }
+};
+export const updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, price, stock, category } = req.body;
+
+    const updatedProduct = await prisma.product.update({
+      where: { id },
+      data: {
+        name,
+        description,
+        price: parseFloat(price),
+        stock: parseInt(stock),
+        category,
+      }
+    });
+
+    res.json(updatedProduct);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al actualizar el producto' });
   }
 };
