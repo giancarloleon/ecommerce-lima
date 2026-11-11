@@ -13,9 +13,9 @@ const prisma = new PrismaClient({ adapter });
 export const createProduct = async (req, res) => {
   try {
     const { name, description, price, stock, category } = req.body;
-    let imageUrl = req.body.imageUrl; // Por si envían una URL manual
+    let imageUrl = null;
 
-    // 👇 Si el usuario subió un archivo, lo mandamos a Cloudinary
+    // 1. Si hay imagen, la subimos a Cloudinary primero
     if (req.file) {
       const result = await new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
@@ -27,9 +27,28 @@ export const createProduct = async (req, res) => {
         );
         uploadStream.end(req.file.buffer);
       });
-      imageUrl = result.secure_url; // Obtenemos la URL de Cloudinary
+      imageUrl = result.secure_url;
     }
 
+    // 2. Verificamos si el producto ya existe (mismo nombre y categoría)
+    const existingProduct = await prisma.product.findFirst({
+      where: { name, category }
+    });
+
+    if (existingProduct) {
+      // 3. Si existe, actualizamos sumando el stock
+      const updatedProduct = await prisma.product.update({
+        where: { id: existingProduct.id },
+        data: {
+          stock: existingProduct.stock + parseInt(stock),
+          // Si subieron una nueva imagen, actualizamos la URL
+          ...(imageUrl && { imageUrl }), 
+        }
+      });
+      return res.status(200).json(updatedProduct);
+    }
+
+    // 4. Si no existe, lo creamos
     const newProduct = await prisma.product.create({
       data: {
         name,
@@ -37,14 +56,14 @@ export const createProduct = async (req, res) => {
         price: parseFloat(price),
         stock: parseInt(stock),
         category,
-        imageUrl, // Guardamos la URL (de Cloudinary o manual)
+        imageUrl,
       },
     });
 
     res.status(201).json(newProduct);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al crear el producto' });
+    console.error("Error en createProduct:", error);
+    res.status(500).json({ error: 'Error al crear/actualizar el producto' });
   }
 };
 
@@ -122,16 +141,32 @@ export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, price, stock, category } = req.body;
+    let updateData = {
+      name,
+      description,
+      price: parseFloat(price),
+      stock: parseInt(stock),
+      category,
+    };
+
+    // Si el admin subió una nueva imagen, la procesamos
+    if (req.file) {
+      const result = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder: 'ecommerce-lima' },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        uploadStream.end(req.file.buffer);
+      });
+      updateData.imageUrl = result.secure_url;
+    }
 
     const updatedProduct = await prisma.product.update({
       where: { id },
-      data: {
-        name,
-        description,
-        price: parseFloat(price),
-        stock: parseInt(stock),
-        category,
-      }
+      data: updateData,
     });
 
     res.json(updatedProduct);
