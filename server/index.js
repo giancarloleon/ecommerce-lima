@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { PrismaPg } from '@prisma/adapter-pg';
-// 👇 AQUÍ ESTÁ EL CAMBIO: Apuntamos a la carpeta generada
 import { PrismaClient } from './generated/prisma/index.js'; 
 import productRoutes from './routes/productRoutes.js';
 import authRoutes from './routes/authRoutes.js';
@@ -14,8 +13,8 @@ const app = express();
 
 app.use(cors({
   origin: [
-    'http://localhost:5173', // Para desarrollo local
-    'client-sable-five-47.vercel.app' // 👈 Tu URL de Vercel
+    'http://localhost:5173', 
+    'https://client-sable-five-47.vercel.app' 
   ],
   credentials: true
 }));
