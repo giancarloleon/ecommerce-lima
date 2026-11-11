@@ -182,52 +182,92 @@ export default function Admin() {
             </div>
           )}
 
-          {/* TABLA PRINCIPAL */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
+                    {/* TABLA / TARJETAS PRINCIPAL */}
+          <div className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden">
             {loading ? (
               <p className="p-6 text-center text-gray-500">Cargando productos...</p>
             ) : products.length === 0 ? (
               <p className="p-6 text-center text-gray-500">No hay productos en la tienda.</p>
             ) : (
-              <table className="w-full text-left">
-                <thead className="bg-gray-50 border-b text-gray-600 text-sm">
-                  <tr>
-                    <th className="p-4 font-semibold">Producto</th>
-                    <th className="p-4 font-semibold">Categoría</th>
-                    <th className="p-4 font-semibold">Precio</th>
-                    <th className="p-4 font-semibold">Stock</th>
-                    <th className="p-4 font-semibold text-center">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <>
+                {/* 1. VISTA DE TABLA (Solo para pantallas medianas/grandes) */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-gray-50 border-b text-gray-600 text-sm">
+                      <tr>
+                        <th className="p-4 font-semibold">Producto</th>
+                        <th className="p-4 font-semibold">Categoría</th>
+                        <th className="p-4 font-semibold">Precio</th>
+                        <th className="p-4 font-semibold">Stock</th>
+                        <th className="p-4 font-semibold text-center">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.map(p => (
+                        <tr key={p.id} className="border-b hover:bg-gray-50 transition">
+                          <td className="p-4 font-medium">{p.name}</td>
+                          <td className="p-4 text-gray-600">{p.category}</td>
+                          <td className="p-4">S/ {p.price}</td>
+                          <td className="p-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${p.stock > 5 ? 'bg-green-100 text-green-700' : p.stock > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                              {p.stock} unds
+                            </span>
+                          </td>
+                          <td className="p-4 text-center flex justify-center gap-2">
+                            <button 
+                              onClick={() => handleEditClick(p)}
+                              className="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 font-medium text-sm transition"
+                            >
+                              Editar
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteProduct(p.id)}
+                              className="bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 font-medium text-sm transition"
+                            >
+                              Eliminar
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 2. VISTA DE TARJETAS (Solo para celulares) */}
+                <div className="md:hidden flex flex-col divide-y divide-gray-100">
                   {products.map(p => (
-                    <tr key={p.id} className="border-b hover:bg-gray-50 transition">
-                      <td className="p-4 font-medium">{p.name}</td>
-                      <td className="p-4 text-gray-600">{p.category}</td>
-                      <td className="p-4">S/ {p.price}</td>
-                      <td className="p-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${p.stock > 5 ? 'bg-green-100 text-green-700' : p.stock > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                          {p.stock} unds
+                    <div key={p.id} className="p-4 flex flex-col gap-3 hover:bg-gray-50 transition">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-bold text-gray-800 text-lg">{p.name}</p>
+                          <p className="text-sm text-gray-500">{p.category}</p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${p.stock > 5 ? 'bg-green-100 text-green-700' : p.stock > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                          Stock: {p.stock}
                         </span>
-                      </td>
-                      <td className="p-4 text-center flex justify-center gap-2">
-                        <button 
-                          onClick={() => handleEditClick(p)}
-                          className="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 font-medium text-sm transition"
-                        >
-                          Editar
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteProduct(p.id)}
-                          className="bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 font-medium text-sm transition"
-                        >
-                          Eliminar
-                        </button>
-                      </td>
-                    </tr>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <p className="font-bold text-gray-700 text-lg">S/ {p.price}</p>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => handleEditClick(p)}
+                            className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200 font-medium text-sm transition"
+                          >
+                            Editar
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteProduct(p.id)}
+                            className="bg-red-100 text-red-700 px-3 py-1.5 rounded hover:bg-red-200 font-medium text-sm transition"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </>
             )}
           </div>
         </div>
