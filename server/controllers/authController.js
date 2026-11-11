@@ -35,10 +35,10 @@ export const register = async (req, res) => {
     });
 
     // Generar el Token JWT
-    const token = jwt.sign(
-      { id: newUser.id, role: newUser.role }, // Payload (datos públicos)
-      process.env.JWT_SECRET, // Llave secreta
-      { expiresIn: '7d' } // Expira en 7 días
+        const token = jwt.sign(
+      { id: newUser.id, role: newUser.role, email: newUser.email }, // 👈 Añade el email aquí
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
     );
 
     res.status(201).json({ 
@@ -57,21 +57,19 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Buscar el usuario
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    // Comparar la contraseña ingresada con la encriptada en la BD
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    // Generar el Token
+    // 👇 AQUÍ ESTÁ LA CLAVE: Asegúrate de que el email esté en el token
     const token = jwt.sign(
-      { id: user.id, role: user.role },
+      { id: user.id, role: user.role, email: user.email }, 
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -82,7 +80,7 @@ export const login = async (req, res) => {
       user: { id: user.id, name: user.name, email: user.email, role: user.role }
     });
   } catch (error) {
-    console.error(error);
+    console.error("ERROR EN LOGIN:", error); // 👈 Esto te dirá qué falla en la terminal
     res.status(500).json({ error: 'Error al iniciar sesión' });
   }
 };

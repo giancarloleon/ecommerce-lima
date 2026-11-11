@@ -4,6 +4,7 @@ import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 
 export default function Home() {
@@ -33,6 +34,19 @@ export default function Home() {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+    const handleAddToCart = (product) => {
+    addToCart(product);
+    // 👇 Lanza la notificación
+    toast.success(`${product.name} se agregó al carrito`, {
+      icon: '🛒',
+      style: {
+        borderRadius: '10px',
+        background: '#333',
+        color: '#fff',
+      },
+    });
   };
 
   if (loading) return <div className="text-center mt-10">Cargando productos...</div>;
@@ -79,10 +93,10 @@ export default function Home() {
               <p className="text-xl font-bold text-gray-800">S/ {product.price}</p>
               
               <button
-                onClick={() => addToCart(product)}
-                className="mt-4 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                onClick={() => handleAddToCart(product)}
+                className="mt-4 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
               >
-                Agregar al carrito
+                    Agregar al carrito
               </button>
             </div>
           </div>

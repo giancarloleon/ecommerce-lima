@@ -1,94 +1,170 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast'; // 👈 Usamos las notificaciones bonitas
 
 export default function Admin() {
-  const [formData, setFormData] = useState({
-    name: '', description: '', price: '', stock: '', category: '', imageUrl: ''
-  });
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('products'); // 'products', 'orders' o 'create'
   
-  const navigate = useNavigate();
+  const [formData, setFormData] = useState({ name: '', description: '', price: '', stock: '', category: '', imageUrl: '' });
+  const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
 
-  // Manejador de cambios para todos los inputs
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  // Función para recargar datos (productos y órdenes)
+  const fetchData = async () => {
+    try {
+      const prodRes = await api.get('/products');
+      setProducts(prodRes.data);
+      
+      const ordRes = await api.get('/orders/all'); 
+      setOrders(ordRes.data);
+    } catch (error) {
+      console.error('Error al cargar datos del dashboard', error);
+    }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setMessage('');
-    setError('');
-
     try {
-      // Enviamos los datos al backend
       await api.post('/products', formData);
-      
-      setMessage('¡Producto creado con éxito!');
-      
-      // Limpiamos el formulario
+      toast.success('Producto creado con éxito');
       setFormData({ name: '', description: '', price: '', stock: '', category: '', imageUrl: '' });
-      
-      // Opcional: Redirigir al inicio después de 2 segundos
-      setTimeout(() => navigate('/'), 2000);
-      
-    } catch (err) {
-      setError(err.response?.data?.error || 'Error al crear el producto');
-    } finally {
-      setLoading(false);
+      fetchData(); // Recargamos la lista
+      setActiveTab('products'); // Volvemos a la pestaña de productos
+    } catch (error) {
+      toast.error('Error al crear el producto');
     }
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-2xl mt-10">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Panel de Administrador</h2>
-        <Link to="/" className="text-blue-600 hover:underline">Volver a la tienda</Link>
+    <div className="container mx-auto p-4 mt-10 max-w-5xl">
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-3xl font-bold text-gray-800">Panel de Administrador</h2>
+        <Link to="/" className="text-blue-600 hover:underline font-medium">Volver a la tienda</Link>
       </div>
-      
-      {message && <div className="bg-green-100 text-green-700 p-3 rounded mb-4">{message}</div>}
-      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md space-y-4">
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Nombre del Producto</label>
-          <input type="text" name="name" required onChange={handleChange} value={formData.name} className="mt-1 w-full border p-2 rounded" />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Descripción</label>
-          <textarea name="description" required onChange={handleChange} value={formData.description} className="mt-1 w-full border p-2 rounded" rows="3" />
-        </div>
-        
-        <div className="flex gap-4">
-          <div className="w-1/2">
-            <label className="block text-sm font-medium text-gray-700">Precio (S/)</label>
-            <input type="number" step="0.01" name="price" required onChange={handleChange} value={formData.price} className="mt-1 w-full border p-2 rounded" />
-          </div>
-          <div className="w-1/2">
-            <label className="block text-sm font-medium text-gray-700">Stock</label>
-            <input type="number" name="stock" required onChange={handleChange} value={formData.stock} className="mt-1 w-full border p-2 rounded" />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Categoría</label>
-          <input type="text" name="category" required onChange={handleChange} value={formData.category} className="mt-1 w-full border p-2 rounded" />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">URL de la Imagen (Opcional)</label>
-          <input type="text" name="imageUrl" onChange={handleChange} value={formData.imageUrl} className="mt-1 w-full border p-2 rounded" placeholder="https://ejemplo.com/imagen.jpg" />
-        </div>
-
-        <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-bold disabled:opacity-50">
-          {loading ? 'Guardando...' : 'Guardar Producto'}
+      {/* Navegación de Pestañas */}
+      <div className="flex gap-4 mb-6 border-b border-gray-300">
+        <button onClick={() => setActiveTab('products')} className={`font-bold pb-3 px-2 ${activeTab === 'products' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-blue-500'}`}>
+          Productos y Stock
         </button>
-      </form>
+        <button onClick={() => setActiveTab('orders')} className={`font-bold pb-3 px-2 ${activeTab === 'orders' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-blue-500'}`}>
+          Órdenes de Compra ({orders.length})
+        </button>
+        <button onClick={() => setActiveTab('create')} className={`font-bold pb-3 px-2 ${activeTab === 'create' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-blue-500'}`}>
+          + Nuevo Producto
+        </button>
+      </div>
+
+      {/* CONTENIDO: TABLA DE PRODUCTOS Y STOCK */}
+      {activeTab === 'products' && (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 text-sm">
+              <tr>
+                <th className="p-4 font-semibold">Producto</th>
+                <th className="p-4 font-semibold">Categoría</th>
+                <th className="p-4 font-semibold">Precio</th>
+                <th className="p-4 font-semibold">Stock</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map(p => (
+                <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                  <td className="p-4 font-medium text-gray-800">{p.name}</td>
+                  <td className="p-4 text-gray-600">{p.category}</td>
+                  <td className="p-4 text-gray-800">S/ {p.price}</td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${p.stock > 5 ? 'bg-green-100 text-green-700' : p.stock > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                      {p.stock} unidades
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {products.length === 0 && <p className="p-6 text-center text-gray-500">No hay productos en la tienda.</p>}
+        </div>
+      )}
+
+      {/* CONTENIDO: LISTA DE ÓRDENES */}
+      {activeTab === 'orders' && (
+        <div className="space-y-4">
+          {orders.map(order => (
+            <div key={order.id} className="bg-white p-5 rounded-lg shadow-md border border-gray-100">
+              <div className="flex flex-col md:flex-row justify-between font-bold border-b pb-3 mb-3 gap-2 text-gray-800">
+                <div>
+                  <span className="block text-lg">Pedido de: {order.user.name}</span>
+                  <span className="text-sm text-gray-500 font-normal">{order.user.email}</span>
+                </div>
+                <div className="md:text-right">
+                  <span className={`inline-block px-2 py-1 rounded text-xs mb-1 ${order.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    {order.status}
+                  </span>
+                  <span className="block text-lg">S/ {order.totalAmount}</span>
+                </div>
+              </div>
+              <ul className="text-sm text-gray-600 space-y-1">
+                {order.items.map(item => (
+                  <li key={item.id} className="flex justify-between">
+                    <span>{item.quantity}x {item.product.name}</span>
+                    <span>S/ {(item.quantity * item.price).toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          {orders.length === 0 && <p className="text-gray-500 bg-white p-6 rounded shadow text-center">Aún no hay ventas registradas.</p>}
+        </div>
+      )}
+
+      {/* CONTENIDO: CREAR PRODUCTO */}
+      {activeTab === 'create' && (
+        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md space-y-5 max-w-2xl mx-auto border border-gray-100">
+          <h3 className="font-bold text-xl text-gray-800 mb-4 border-b pb-2">Añadir Nuevo Producto</h3>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
+            <input type="text" name="name" required onChange={handleChange} value={formData.name} className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+            <textarea name="description" required onChange={handleChange} value={formData.description} rows="3" className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Precio (S/)</label>
+              <input type="number" step="0.01" name="price" required onChange={handleChange} value={formData.price} className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+              <input type="number" name="stock" required onChange={handleChange} value={formData.stock} className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+            <input type="text" name="category" required onChange={handleChange} value={formData.category} className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">URL de la Imagen (Opcional)</label>
+            <input type="text" name="imageUrl" onChange={handleChange} value={formData.imageUrl} className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://..." />
+          </div>
+
+          <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 font-bold transition duration-200">
+            Guardar Producto
+          </button>
+        </form>
+      )}
     </div>
   );
 }
