@@ -64,7 +64,10 @@ export default function Home() {
     <div className="container mx-auto p-4">
       {/* HEADER RESPONSIVE */}
       <header className="flex flex-col md:flex-row justify-between items-center bg-white p-4 shadow-sm mb-6 rounded-lg gap-4">
-        <h1 className="text-2xl font-bold text-blue-600">Mi E-commerce</h1>
+       {/* 👇 Cambiamos el título para que salude */}
+        <h1 className="text-2xl font-bold text-blue-600">
+          {user ? `Hola, ${user.name.split(' ')[0]}` : 'Mi E-commerce'}
+        </h1>
         
         {/* BARRA DE BÚSQUEDA */}
         <div className="w-full md:w-1/3">

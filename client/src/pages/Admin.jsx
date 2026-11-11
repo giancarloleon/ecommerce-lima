@@ -8,6 +8,7 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState('products'); // 'products', 'orders' o 'create'
   
   const [formData, setFormData] = useState({ name: '', description: '', price: '', stock: '', category: '', imageUrl: '' });
+   const [quantityToCreate, setQuantityToCreate] = useState(1); 
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [imageFile, setImageFile] = useState(null);
@@ -31,29 +32,41 @@ export default function Admin() {
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  const handleSubmit = async (e) => {
-  e.preventDefault();
-    // Usamos FormData en lugar de un objeto JSON
-  const data = new FormData();
-  data.append('name', formData.name);
-  data.append('description', formData.description);
-  data.append('price', formData.price);
-  data.append('stock', formData.stock);
-  data.append('category', formData.category);
-  if (imageFile) {
-    data.append('image', imageFile);
-  }
+ const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // 1. Calculamos el stock total (stock base * cantidad de lotes)
+    const stockBase = parseInt(formData.stock) || 0;
+    const stockTotal = stockBase * quantityToCreate;
 
-  try {
-    await api.post('/products', data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    toast.success('Producto creado');
-    // ... limpiar formulario
-  } catch (error) {
-    toast.error('Error al crear producto');
-  }
-};
+    // 2. Preparamos el FormData
+    const data = new FormData();
+    data.append('name', formData.name);
+    data.append('description', formData.description);
+    data.append('price', formData.price);
+    data.append('stock', stockTotal); // 👈 Enviamos el stock calculado
+    data.append('category', formData.category);
+    
+    if (imageFile) {
+      data.append('image', imageFile);
+    }
+
+    try {
+      await api.post('/products', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success(`Producto creado con ${stockTotal} unidades en stock`);
+      
+      // Limpiamos el formulario
+      setFormData({ name: '', description: '', price: '', stock: '', category: '', imageUrl: '' });
+      setQuantityToCreate(1);
+      setImageFile(null);
+      fetchData(); // Recargamos la tabla
+      setActiveTab('products'); // Volvemos a la pestaña de productos
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Error al crear producto');
+    }
+  };
 
   return (
     <div className="container mx-auto p-4 mt-10 max-w-5xl">
@@ -152,15 +165,31 @@ export default function Admin() {
             <textarea name="description" required onChange={handleChange} value={formData.description} rows="3" className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Precio (S/)</label>
               <input type="number" step="0.01" name="price" required onChange={handleChange} value={formData.price} className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 outline-none" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Stock por Lote</label>
               <input type="number" name="stock" required onChange={handleChange} value={formData.stock} className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 outline-none" />
             </div>
+          </div>
+
+          {/* 👇 NUEVO: Multiplicador de Lotes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad de Lotes a agregar</label>
+            <input 
+              type="number" 
+              min="1"
+              required
+              value={quantityToCreate} 
+              onChange={(e) => setQuantityToCreate(parseInt(e.target.value) || 1)} 
+              className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 outline-none" 
+            />
+            <p className="text-sm text-blue-600 font-medium mt-1">
+              Stock total a registrar: { (parseInt(formData.stock) || 0) * quantityToCreate } unidades
+            </p>
           </div>
 
           <div>
