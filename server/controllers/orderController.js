@@ -120,13 +120,13 @@ export const getAllOrders = async (req, res) => {
     const orders = await prisma.order.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
-        user: { select: { name: true, email: true } }, // Quién compró
-        items: { include: { product: true } } // Qué compró
+        user: { select: { name: true, email: true } },
+        items: { include: { product: true } }
       }
     });
-    res.json(orders);
+    res.json(orders); // 👈 Asegúrate de enviar el array directamente
   } catch (error) {
-    console.error(error);
+    console.error("Error en getAllOrders:", error);
     res.status(500).json({ error: 'Error al obtener todas las órdenes' });
   }
 };

@@ -52,10 +52,11 @@ export const createProduct = async (req, res) => {
 export const getProducts = async (req, res) => {
   try {
     const products = await prisma.product.findMany({
-      orderBy: { createdAt: 'desc' } // Los más nuevos primero
+      orderBy: { createdAt: 'desc' }
     });
-    res.json(products);
+    res.json(products); // 👈 Asegúrate de enviar el array directamente
   } catch (error) {
+    console.error("Error en getProducts:", error);
     res.status(500).json({ error: 'Error al obtener productos' });
   }
 };
