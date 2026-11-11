@@ -3,6 +3,7 @@ import api from '../api/axios';
 import { useCartStore } from '../store/cartStore';
 import { useNavigate, Link } from 'react-router-dom';
 import { loadCheckoutScript, openCheckout } from '@jibaru/culqi/checkout';
+import { useAuthStore } from '../store/authStore';
 
 export default function Cart() {
   const cartItems = useCartStore((state) => state.cartItems);
@@ -10,13 +11,21 @@ export default function Cart() {
   const clearCart = useCartStore((state) => state.clearCart);
   const increaseQuantity = useCartStore((state) => state.increaseQuantity);
   const decreaseQuantity = useCartStore((state) => state.decreaseQuantity);
+  const user = useAuthStore((state) => state.user);
+
 
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleCheckout = async () => {
-    if (cartItems.length === 0) return;
-    setLoading(true);
+  if (cartItems.length === 0) return;
+  
+  // Si no hay usuario, lo mandamos a loguearse
+  if (!user) {
+    alert('Debes iniciar sesión para comprar.');
+    navigate('/login');
+    return;
+  }
 
     try {
       // 1. Cargamos el script de Culqi dinámicamente
