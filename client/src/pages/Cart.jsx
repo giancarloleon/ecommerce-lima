@@ -2,6 +2,7 @@ import { useState } from 'react';
 import api from '../api/axios';
 import { useCartStore } from '../store/cartStore';
 import { useNavigate, Link } from 'react-router-dom';
+import { loadCheckoutScript, openCheckout } from '@jibaru/culqi/checkout';
 
 export default function Cart() {
   const cartItems = useCartStore((state) => state.cartItems);
@@ -13,66 +14,55 @@ export default function Cart() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cartItems.length === 0) return;
     setLoading(true);
 
-    if (typeof window.CulqiCheckout === 'undefined') {
-      alert('El sistema de pagos no está listo. Recarga la página.');
-      setLoading(false);
-      return;
-    }
+    try {
+      // 1. Cargamos el script de Culqi dinámicamente
+      await loadCheckoutScript();
 
-    const publicKey = import.meta.env.VITE_CULQI_PUBLIC_KEY;
+      const publicKey = import.meta.env.VITE_CULQI_PUBLIC_KEY;
 
-    if (!publicKey) {
-      alert("Error: Falta la llave pública de Culqi en el archivo .env");
-      setLoading(false);
-      return;
-    }
+      if (!publicKey) {
+        alert("Error: Falta la llave pública de Culqi en el archivo .env");
+        setLoading(false);
+        return;
+      }
 
-    const config = {
-      settings: {
+      // 2. Abrimos el modal con la librería
+      openCheckout({
         publicKey: publicKey,
         title: 'Mi E-commerce',
-        currency: 'PEN',
         amount: Math.round(getTotalPrice() * 100),
-      },
-      client: {
-        checkout: {
-          paymentMethods: { tarjeta: true },
+        currency: 'PEN',
+        mode: 'modal',
+        onToken: async (token) => {
+          try {
+            await api.post('/orders', { items: cartItems, culqiToken: token.id });
+            clearCart();
+            alert('¡Pago exitoso! Tu orden está en camino.');
+            navigate('/my-orders');
+          } catch (error) {
+            alert(error.response?.data?.error || 'Error al procesar el pago.');
+          } finally {
+            setLoading(false);
+          }
         },
-      },
-    };
-
-    try {
-      const checkout = new window.CulqiCheckout(config);
-      checkout.open();
-    } catch (error) {
-      console.error("Error al abrir Culqi:", error);
-      alert("Hubo un error al abrir la pasarela de pagos. Revisa la consola.");
-      setLoading(false);
-      return;
-    }
-
-    window.addEventListener('culqi', async (e) => {
-      const token = e.detail.id;
-      
-      if (token) {
-        try {
-          await api.post('/orders', { items: cartItems, culqiToken: token });
-          clearCart();
-          alert('¡Pago exitoso! Tu orden está en camino.');
-          navigate('/my-orders');
-        } catch (error) {
-          console.error(error);
-          alert(error.response?.data?.error || 'Error al procesar el pago en el servidor.');
+        onError: (error) => {
+          console.error('Error de Culqi:', error);
+          alert(error.user_message || 'Error en la pasarela de pagos.');
+          setLoading(false);
+        },
+        onClose: () => {
           setLoading(false);
         }
-      } else {
-        setLoading(false);
-      }
-    });
+      });
+    } catch (error) {
+      console.error('Error al cargar Culqi:', error);
+      alert('No se pudo cargar la pasarela de pagos.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -97,13 +87,11 @@ export default function Cart() {
             {cartItems.map((item) => (
               <div key={item.id} className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 shadow rounded-lg gap-4">
                 
-                {/* Nombre y Precio */}
                 <div className="flex-1 w-full text-center sm:text-left">
                   <h3 className="font-bold text-lg">{item.name}</h3>
                   <p className="text-gray-500 text-sm">Precio unitario: S/ {item.price}</p>
                 </div>
 
-                {/* Controles de Cantidad */}
                 <div className="flex items-center gap-3">
                   <button 
                     onClick={() => decreaseQuantity(item.id)}
@@ -120,7 +108,6 @@ export default function Cart() {
                   </button>
                 </div>
 
-                {/* Subtotal */}
                 <div className="text-right sm:min-w-[100px] w-full sm:w-auto">
                   <p className="font-bold text-lg">S/ {(item.price * item.quantity).toFixed(2)}</p>
                 </div>
