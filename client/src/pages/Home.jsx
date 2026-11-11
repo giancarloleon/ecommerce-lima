@@ -77,22 +77,40 @@ export default function Home() {
           />
         </div>
 
-        {/* BOTONES DE NAVEGACIÓN */}
+                  {/* BOTONES DE NAVEGACIÓN */}
         <div className="flex items-center gap-3 flex-wrap justify-center">
-          {user?.role === 'ADMIN' && (
-            <Link to="/admin" className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 transition text-sm">
-              Panel Admin
-            </Link>
+          {user ? (
+            // 👇 SI HAY USUARIO: Mostramos su menú
+            <>
+              {user.role === 'ADMIN' && (
+                <Link to="/admin" className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 transition text-sm">
+                  Panel Admin
+                </Link>
+              )}
+              <Link to="/my-orders" className="text-gray-600 hover:text-blue-600 font-medium text-sm">
+                Mis Pedidos
+              </Link>
+              <Link to="/cart" className="bg-blue-100 text-blue-700 px-4 py-2 rounded hover:bg-blue-200 transition text-sm">
+                Carrito
+              </Link>
+              <button onClick={handleLogout} className="text-red-500 hover:underline text-sm">
+                Cerrar Sesión
+              </button>
+            </>
+          ) : (
+            // 👇 SI NO HAY USUARIO: Mostramos botones de Login y Registro
+            <>
+              <Link to="/cart" className="bg-blue-100 text-blue-700 px-4 py-2 rounded hover:bg-blue-200 transition text-sm">
+                Carrito
+              </Link>
+              <Link to="/login" className="text-blue-600 font-medium hover:underline text-sm">
+                Iniciar Sesión
+              </Link>
+              <Link to="/register" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition text-sm">
+                Registrarse
+              </Link>
+            </>
           )}
-          <Link to="/my-orders" className="text-gray-600 hover:text-blue-600 font-medium text-sm">
-            Mis Pedidos
-          </Link>
-          <Link to="/cart" className="bg-blue-100 text-blue-700 px-4 py-2 rounded hover:bg-blue-200 transition text-sm">
-            Carrito
-          </Link>
-          <button onClick={handleLogout} className="text-red-500 hover:underline text-sm">
-            Cerrar Sesión
-          </button>
         </div>
       </header>
       {/* 👇 NUEVA BARRA DE CATEGORÍAS */}

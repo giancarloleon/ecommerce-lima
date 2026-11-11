@@ -12,7 +12,13 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173', // Para desarrollo local
+    'client-sable-five-47.vercel.app' // 👈 Tu URL de Vercel
+  ],
+  credentials: true
+}));
 app.use(express.json());
 // ... app.use('/api/products', productRoutes);
 app.use('/api/auth', authRoutes);
