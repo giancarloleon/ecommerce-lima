@@ -2,6 +2,7 @@
 import { PrismaClient } from '../generated/prisma/index.js';
 import { PrismaPg } from '@prisma/adapter-pg';
 import dotenv from 'dotenv';
+import cloudinary from '../config/cloudinary.js';
 
 dotenv.config();
 
@@ -11,17 +12,32 @@ const prisma = new PrismaClient({ adapter });
 // 1. Crear un producto (Solo Admin en el futuro)
 export const createProduct = async (req, res) => {
   try {
-    const { name, description, price, stock, category, imageUrl } = req.body;
+    const { name, description, price, stock, category } = req.body;
+    let imageUrl = req.body.imageUrl; // Por si envían una URL manual
 
-    // Prisma espera que el precio sea un Decimal o String para no perder precisión
+    // 👇 Si el usuario subió un archivo, lo mandamos a Cloudinary
+    if (req.file) {
+      const result = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder: 'ecommerce-lima' },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        uploadStream.end(req.file.buffer);
+      });
+      imageUrl = result.secure_url; // Obtenemos la URL de Cloudinary
+    }
+
     const newProduct = await prisma.product.create({
       data: {
         name,
         description,
-        price: parseFloat(price), // Convertimos el string del front a número
+        price: parseFloat(price),
         stock: parseInt(stock),
         category,
-        imageUrl,
+        imageUrl, // Guardamos la URL (de Cloudinary o manual)
       },
     });
 

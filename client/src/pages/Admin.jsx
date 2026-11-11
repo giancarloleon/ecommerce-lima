@@ -3,12 +3,14 @@ import api from '../api/axios';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast'; // 👈 Usamos las notificaciones bonitas
 
+
 export default function Admin() {
   const [activeTab, setActiveTab] = useState('products'); // 'products', 'orders' o 'create'
   
   const [formData, setFormData] = useState({ name: '', description: '', price: '', stock: '', category: '', imageUrl: '' });
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [imageFile, setImageFile] = useState(null);
 
   // Función para recargar datos (productos y órdenes)
   const fetchData = async () => {
@@ -30,17 +32,28 @@ export default function Admin() {
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await api.post('/products', formData);
-      toast.success('Producto creado con éxito');
-      setFormData({ name: '', description: '', price: '', stock: '', category: '', imageUrl: '' });
-      fetchData(); // Recargamos la lista
-      setActiveTab('products'); // Volvemos a la pestaña de productos
-    } catch (error) {
-      toast.error('Error al crear el producto');
-    }
-  };
+  e.preventDefault();
+    // Usamos FormData en lugar de un objeto JSON
+  const data = new FormData();
+  data.append('name', formData.name);
+  data.append('description', formData.description);
+  data.append('price', formData.price);
+  data.append('stock', formData.stock);
+  data.append('category', formData.category);
+  if (imageFile) {
+    data.append('image', imageFile);
+  }
+
+  try {
+    await api.post('/products', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    toast.success('Producto creado');
+    // ... limpiar formulario
+  } catch (error) {
+    toast.error('Error al crear producto');
+  }
+};
 
   return (
     <div className="container mx-auto p-4 mt-10 max-w-5xl">
@@ -156,8 +169,13 @@ export default function Admin() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">URL de la Imagen (Opcional)</label>
-            <input type="text" name="imageUrl" onChange={handleChange} value={formData.imageUrl} className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://..." />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Imagen del Producto</label>
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={(e) => setImageFile(e.target.files[0])} 
+                className="w-full border border-gray-300 p-2.5 rounded-md" 
+              />
           </div>
 
           <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 font-bold transition duration-200">
